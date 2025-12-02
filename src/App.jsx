@@ -58,20 +58,26 @@ function App() {
         </div>
 
         {/* Main Video Area */}
-        <div style={{ position: 'relative', display: 'inline-block' }}>
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          maxWidth: '640px',
+          margin: '0 auto'
+        }}>
           <WebcamCanvas onPoseResults={handlePoseResults} />
 
           {/* Overlay Feedback */}
           <div style={{
             position: 'absolute',
-            bottom: '40px',
+            bottom: '20px',
             left: '50%',
             transform: 'translateX(-50%)',
             background: 'rgba(0,0,0,0.6)',
             padding: '10px 20px',
             borderRadius: '20px',
             backdropFilter: 'blur(4px)',
-            border: '1px solid rgba(255,255,255,0.2)'
+            border: '1px solid rgba(255,255,255,0.2)',
+            width: 'max-content'
           }}>
             <span style={{ fontSize: '1.2rem', fontWeight: '600', color: '#fff' }}>{feedback}</span>
             <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '5px' }}>Knee Angle: {angle}°</div>
