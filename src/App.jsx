@@ -35,19 +35,21 @@ function App() {
       <div className="container" style={{ textAlign: 'center', zIndex: 10, position: 'relative' }}>
 
         {/* Header Stats */}
-        <div style={{
+        <div className="stats-container" style={{
           display: 'flex',
           justifyContent: 'space-between',
           marginBottom: '20px',
-          width: '640px',
-          margin: '0 auto 20px auto'
+          width: '100%',
+          maxWidth: '640px',
+          margin: '0 auto 20px auto',
+          gap: '10px'
         }}>
-          <div className="glass-panel" style={{ padding: '15px 30px' }}>
+          <div className="glass-panel" style={{ padding: '15px 30px', flex: 1 }}>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>SQUATS</div>
             <div style={{ fontSize: '2.5rem', fontWeight: '700', color: 'var(--primary-accent)' }}>{count}</div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '15px 30px' }}>
+          <div className="glass-panel" style={{ padding: '15px 30px', flex: 1 }}>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>STATUS</div>
             <div style={{ fontSize: '1.5rem', fontWeight: '600', color: stage === 'DOWN' ? 'var(--secondary-accent)' : 'white' }}>
               {stage}

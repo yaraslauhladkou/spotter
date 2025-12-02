@@ -72,6 +72,8 @@ h1 {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .flex-center {
@@ -82,9 +84,13 @@ h1 {
 
 .full-screen {
   width: 100vw;
-  height: 100vh;
+  min-height: 100vh;
+  /* Changed from height to min-height for scrolling if needed */
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  padding: 20px 0;
+  /* Add padding for mobile */
+  box-sizing: border-box;
 }
 
 /* Animations */
@@ -104,4 +110,31 @@ h1 {
 
 .glow-effect {
   animation: glow 3s infinite;
+}
+
+/* Mobile Optimization */
+@media (max-width: 768px) {
+  h1 {
+    font-size: 2rem;
+  }
+
+  .container {
+    padding: 10px;
+  }
+
+  .stats-container {
+    /* flex-direction: column; */
+    /* Actually side-by-side is fine for stats if they fit */
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.8rem;
+  }
+
+  .glass-panel {
+    border-radius: 12px;
+  }
 }

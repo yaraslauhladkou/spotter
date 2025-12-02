@@ -26,7 +26,14 @@ const WebcamCanvas = ({ onPoseResults }) => {
         });
 
         pose.onResults((results) => {
-            if (canvasRef.current) {
+            if (canvasRef.current && webcamRef.current && webcamRef.current.video) {
+                const videoWidth = webcamRef.current.video.videoWidth;
+                const videoHeight = webcamRef.current.video.videoHeight;
+
+                // Set canvas dimensions to match video
+                canvasRef.current.width = videoWidth;
+                canvasRef.current.height = videoHeight;
+
                 const ctx = canvasRef.current.getContext('2d');
                 drawCanvas(ctx, results);
                 if (onPoseResults) {
@@ -42,8 +49,7 @@ const WebcamCanvas = ({ onPoseResults }) => {
                         await pose.send({ image: webcamRef.current.video });
                     }
                 },
-                width: 640,
-                height: 480,
+                // Remove fixed width/height here to allow camera to choose best resolution or default
             });
             camera.start();
             setCameraActive(true);
@@ -51,33 +57,42 @@ const WebcamCanvas = ({ onPoseResults }) => {
     }, [onPoseResults]);
 
     return (
-        <div className="glass-panel" style={{ position: 'relative', width: '640px', height: '480px', margin: '20px auto', overflow: 'hidden' }}>
+        <div className="glass-panel" style={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: '640px',
+            aspectRatio: '4/3', // Maintain aspect ratio
+            margin: '0 auto',
+            overflow: 'hidden'
+        }}>
             <Webcam
                 ref={webcamRef}
                 style={{
                     position: 'absolute',
                     left: 0,
                     right: 0,
-                    textAlign: 'center',
-                    zindex: 9,
-                    width: '640px',
-                    height: '480px',
+                    top: 0,
+                    bottom: 0,
+                    width: '100%',
+                    height: '100%',
                     objectFit: 'cover',
-                    opacity: 0.6 // Slightly dim the video to make the skeleton pop
+                    opacity: 0.6
+                }}
+                videoConstraints={{
+                    facingMode: "user"
                 }}
             />
             <canvas
                 ref={canvasRef}
-                width={640}
-                height={480}
                 style={{
                     position: 'absolute',
                     left: 0,
                     right: 0,
-                    textAlign: 'center',
-                    zindex: 9,
-                    width: '640px',
-                    height: '480px',
+                    top: 0,
+                    bottom: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
                 }}
             />
             {!cameraActive && (
