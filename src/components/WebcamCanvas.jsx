@@ -12,7 +12,7 @@ const WebcamCanvas = ({ onPoseResults }) => {
     useEffect(() => {
         const pose = new Pose({
             locateFile: (file) => {
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+                return `/mediapipe/${file}`;
             },
         });
 
