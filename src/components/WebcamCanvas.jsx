@@ -9,6 +9,12 @@ const WebcamCanvas = ({ onPoseResults }) => {
     const canvasRef = useRef(null);
     const [cameraActive, setCameraActive] = useState(false);
 
+    const onPoseResultsRef = useRef(onPoseResults);
+
+    useEffect(() => {
+        onPoseResultsRef.current = onPoseResults;
+    }, [onPoseResults]);
+
     useEffect(() => {
         const pose = new Pose({
             locateFile: (file) => {
@@ -36,8 +42,9 @@ const WebcamCanvas = ({ onPoseResults }) => {
 
                 const ctx = canvasRef.current.getContext('2d');
                 drawCanvas(ctx, results);
-                if (onPoseResults) {
-                    onPoseResults(results);
+
+                if (onPoseResultsRef.current) {
+                    onPoseResultsRef.current(results);
                 }
             }
         });
@@ -54,7 +61,7 @@ const WebcamCanvas = ({ onPoseResults }) => {
             camera.start();
             setCameraActive(true);
         }
-    }, [onPoseResults]);
+    }, []); // Empty dependency array to run once
 
     return (
         <div className="glass-panel" style={{

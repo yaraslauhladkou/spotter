@@ -7,6 +7,16 @@ export const drawCanvas = (ctx, results) => {
     ctx.save();
     ctx.clearRect(0, 0, width, height);
 
+    // Draw horizontal line at 50% height
+    ctx.beginPath();
+    ctx.moveTo(0, height * 0.5);
+    ctx.lineTo(width, height * 0.5);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#ffff00'; // Yellow
+    ctx.setLineDash([10, 10]); // Dashed line
+    ctx.stroke();
+    ctx.setLineDash([]); // Reset dash
+
     // Draw connectors
     if (results.poseLandmarks) {
         for (const connection of POSE_CONNECTIONS) {

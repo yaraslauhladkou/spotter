@@ -1,145 +1,61 @@
 /**
- * Checks the squat state based on amplitude and strict baseline validation.
+ * Checks the squat state based on head crossing a horizontal line.
  * @param {Array} landmarks - Array of pose landmarks
- * @param {object} currentState - Current logic state { stage, baselineRatio }
+ * @param {object} currentState - Current logic state { stage }
  * @returns {object} { newState, isRep, feedback }
  */
 export const checkSquat = (landmarks, currentState) => {
     // MediaPipe Pose Landmarks:
-    // 11: left_shoulder, 12: right_shoulder
-    // 23: left_hip, 24: right_hip
-    // 27: left_ankle, 28: right_ankle
+    // 0: nose
+    const nose = landmarks[0];
 
-    const leftShoulder = landmarks[11];
-    const rightShoulder = landmarks[12];
-    const leftHip = landmarks[23];
-    const rightHip = landmarks[24];
-    const leftAnkle = landmarks[27];
-    const rightAnkle = landmarks[28];
-
-    // 1. Visibility Check
-    const minVisibility = 0.5;
-    if (
-        leftShoulder.visibility < minVisibility || rightShoulder.visibility < minVisibility ||
-        leftHip.visibility < minVisibility || rightHip.visibility < minVisibility ||
-        (leftAnkle.visibility < minVisibility && rightAnkle.visibility < minVisibility)
-    ) {
+    // Visibility Check
+    if (nose.visibility < 0.5) {
         return {
-            newState: { ...currentState, baselineRatio: null, stage: 'IDLE' }, // Reset if lost
+            newState: currentState,
             isRep: false,
-            feedback: 'Show Full Body'
+            feedback: 'Show Face'
         };
     }
 
-    // 2. Calculate Metrics
-    const shoulderY = (leftShoulder.y + rightShoulder.y) / 2;
-    const hipY = (leftHip.y + rightHip.y) / 2;
-    const ankleY = (leftAnkle.y + rightAnkle.y) / 2;
+    // Metric: Nose Y position (0 is top, 1 is bottom)
+    const noseY = nose.y;
+    // Hysteresis Thresholds
+    // Center is 0.5
+    // Must go below 0.6 to count as DOWN
+    // Must go above 0.4 to count as UP
+    const THRESHOLD_DOWN = 0.6;
+    const THRESHOLD_UP = 0.4;
 
-    const torsoLength = Math.abs(hipY - shoulderY);
-    const legLength = Math.abs(ankleY - hipY);
-
-    if (torsoLength < 0.05) {
-        return { newState: currentState, isRep: false, feedback: 'Adjust Camera' };
-    }
-
-    const currentRatio = legLength / torsoLength;
-
-    // 3. Update State
-    let { stage, baselineRatio } = currentState;
+    let { stage } = currentState;
     let isRep = false;
     let feedback = '';
 
-    // STRICT BASELINE VALIDATION
-    // Only calibrate if we are clearly standing.
-    // A ratio of 1.2+ usually indicates standing (legs longer than torso).
-    // Sitting usually has a ratio < 1.0.
-    const MIN_STANDING_RATIO = 1.2;
-
-    if (baselineRatio === null) {
-        if (currentRatio > MIN_STANDING_RATIO) {
-            baselineRatio = currentRatio;
-            feedback = 'Calibrated';
-        } else {
-            return {
-                newState: { ...currentState, stage: 'IDLE' },
-                isRep: false,
-                feedback: 'Stand Up to Calibrate'
-            };
-        }
-    } else {
-        // Continuous calibration: if we see a "taller" standing pose, update baseline
-        if (currentRatio > baselineRatio) {
-            baselineRatio = currentRatio;
-        }
-    }
-
-    // Thresholds relative to baseline
-    const ratioToBaseline = currentRatio / baselineRatio;
-
-    // State Machine Thresholds
-    const THRESHOLD_DESCEND = 0.85; // Start going down
-    const THRESHOLD_BOTTOM = 0.70;  // Deep squat
-    const THRESHOLD_ASCEND = 0.85;  // Coming back up
-    const THRESHOLD_RESET = 0.95;   // Back to standing
-
     // State Machine
-    // Stages: IDLE -> DESCENDING -> BOTTOM -> ASCENDING -> IDLE (Rep)
+    // UP: Nose above line (y < 0.4)
+    // DOWN: Nose below line (y > 0.6)
 
-    switch (stage) {
-        case 'IDLE':
-        case 'UP': // Legacy support or alias
-            if (ratioToBaseline < THRESHOLD_DESCEND) {
-                stage = 'DESCENDING';
-                feedback = 'Going Down...';
-            } else {
-                feedback = 'Ready';
-            }
-            break;
-
-        case 'DESCENDING':
-            if (ratioToBaseline < THRESHOLD_BOTTOM) {
-                stage = 'BOTTOM';
-                feedback = 'Good Depth!';
-            } else if (ratioToBaseline > THRESHOLD_RESET) {
-                // Aborted squat
-                stage = 'IDLE';
-                feedback = 'Reset';
-            } else {
-                feedback = 'Go Lower';
-            }
-            break;
-
-        case 'BOTTOM':
-            if (ratioToBaseline > THRESHOLD_ASCEND) {
-                stage = 'ASCENDING';
-                feedback = 'Coming Up...';
-            } else {
-                feedback = 'Hold...';
-            }
-            break;
-
-        case 'ASCENDING':
-            if (ratioToBaseline > THRESHOLD_RESET) {
-                stage = 'IDLE';
-                isRep = true;
-                feedback = 'Rep Completed';
-            } else if (ratioToBaseline < THRESHOLD_BOTTOM) {
-                // Went back down
-                stage = 'BOTTOM';
-                feedback = 'Good Depth!';
-            } else {
-                feedback = 'Push Up';
-            }
-            break;
-
-        default:
-            stage = 'IDLE';
-            break;
+    if (stage === 'UP' || stage === 'IDLE') {
+        if (noseY > THRESHOLD_DOWN) {
+            stage = 'DOWN';
+            feedback = 'Good Depth!';
+        } else if (noseY > 0.45 && noseY < 0.55) {
+            feedback = 'Go Lower';
+        } else {
+            feedback = 'Ready';
+        }
+    } else if (stage === 'DOWN') {
+        if (noseY < THRESHOLD_UP) {
+            stage = 'UP';
+            isRep = true;
+            feedback = 'Rep Completed';
+        } else {
+            feedback = 'Come Up';
+        }
     }
 
     return {
-        newState: { stage, baselineRatio },
+        newState: { stage },
         isRep,
         feedback
     };

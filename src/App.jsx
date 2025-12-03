@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import WebcamCanvas from './components/WebcamCanvas';
 import { checkSquat } from './utils/squatLogic';
 
@@ -6,17 +6,29 @@ function App() {
   const [count, setCount] = useState(0);
   const [feedback, setFeedback] = useState('Get Ready');
 
-  // Complex state for the logic (stage, timestamps, baselines)
-  const [logicState, setLogicState] = useState({
-    stage: 'IDLE',
-    baselineRatio: null
+  // Use Ref for instant state updates (avoids race conditions)
+  const logicStateRef = useRef({
+    stage: 'UP'
+  });
+
+  // Sync Ref to State for UI updates
+  const [uiState, setUiState] = useState({
+    stage: 'UP'
   });
 
   const handlePoseResults = useCallback((results) => {
     if (results.poseLandmarks) {
-      const { newState, isRep, feedback: newFeedback } = checkSquat(results.poseLandmarks, logicState);
+      // Read from Ref (instant)
+      const currentState = logicStateRef.current;
+      const { newState, isRep, feedback: newFeedback } = checkSquat(results.poseLandmarks, currentState);
 
-      setLogicState(newState);
+      // Write to Ref (instant)
+      logicStateRef.current = newState;
+
+      // Update UI State (eventual)
+      if (newState.stage !== uiState.stage) {
+        setUiState({ stage: newState.stage });
+      }
 
       if (isRep) {
         setCount(c => c + 1);
@@ -26,7 +38,7 @@ function App() {
         setFeedback(newFeedback);
       }
     }
-  }, [logicState]);
+  }, [uiState.stage]);
 
   return (
     <div className="full-screen flex-center">
@@ -49,8 +61,8 @@ function App() {
 
           <div className="glass-panel" style={{ padding: '15px 30px', flex: 1 }}>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>STATUS</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: '600', color: logicState.stage === 'DOWN' ? 'var(--secondary-accent)' : 'white' }}>
-              {logicState.stage}
+            <div style={{ fontSize: '1.5rem', fontWeight: '600', color: uiState.stage === 'DOWN' ? 'var(--secondary-accent)' : 'white' }}>
+              {uiState.stage}
             </div>
           </div>
         </div>
