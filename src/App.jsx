@@ -8,7 +8,7 @@ function App() {
 
   // Complex state for the logic (stage, timestamps, baselines)
   const [logicState, setLogicState] = useState({
-    stage: 'UP',
+    stage: 'IDLE',
     baselineRatio: null
   });
 
