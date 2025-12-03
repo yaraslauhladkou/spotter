@@ -17,7 +17,7 @@ const WebcamCanvas = ({ onPoseResults }) => {
         });
 
         pose.setOptions({
-            modelComplexity: 1,
+            modelComplexity: 0,
             smoothLandmarks: true,
             enableSegmentation: false,
             smoothSegmentation: false,
