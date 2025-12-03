@@ -6,7 +6,7 @@ function App() {
   const [count, setCount] = useState(0);
   const [stage, setStage] = useState('UP');
   const [feedback, setFeedback] = useState('Get Ready');
-  const [angle, setAngle] = useState(0);
+
 
   const handlePoseResults = useCallback((results) => {
     if (results.poseLandmarks) {
@@ -24,9 +24,7 @@ function App() {
         setFeedback(newFeedback);
       }
 
-      if (currentAngle) {
-        setAngle(Math.round(currentAngle));
-      }
+
     }
   }, [stage]);
 
@@ -80,7 +78,7 @@ function App() {
             width: 'max-content'
           }}>
             <span style={{ fontSize: '1.2rem', fontWeight: '600', color: '#fff' }}>{feedback}</span>
-            <div style={{ fontSize: '0.8rem', color: '#ccc', marginTop: '5px' }}>Knee Angle: {angle}°</div>
+
           </div>
         </div>
 
