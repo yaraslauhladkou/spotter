@@ -1,85 +1,96 @@
 /**
- * Checks the squat state based on head position and full body visibility.
+ * Checks the squat state based on biomechanical ratios and debouncing.
  * @param {Array} landmarks - Array of pose landmarks
- * @param {string} currentStage - Current stage ('UP' or 'DOWN')
- * @returns {object} { stage, isRep, feedback, angle }
+ * @param {object} currentState - Current logic state { stage, baselineRatio }
+ * @returns {object} { newState, isRep, feedback }
  */
-
-let baselineY = null; // Store the standing height (min Y)
-
-export const checkSquat = (landmarks, currentStage) => {
+export const checkSquat = (landmarks, currentState) => {
     // MediaPipe Pose Landmarks:
-    // 0: nose
+    // 11: left_shoulder, 12: right_shoulder
     // 23: left_hip, 24: right_hip
     // 27: left_ankle, 28: right_ankle
 
-    const nose = landmarks[0];
-    const leftAnkle = landmarks[27];
-    const rightAnkle = landmarks[28];
+    const leftShoulder = landmarks[11];
+    const rightShoulder = landmarks[12];
     const leftHip = landmarks[23];
     const rightHip = landmarks[24];
+    const leftAnkle = landmarks[27];
+    const rightAnkle = landmarks[28];
 
-    // 1. Check Full Body Visibility
-    // We need at least one ankle to be visible to ensure the user is fully in frame.
-    // Visibility score ranges from 0 to 1. 0.5 is a good threshold.
-    const isLeftAnkleVisible = leftAnkle.visibility > 0.5;
-    const isRightAnkleVisible = rightAnkle.visibility > 0.5;
-
-    if (!isLeftAnkleVisible && !isRightAnkleVisible) {
-        // Reset baseline if user leaves frame or gets too close
-        baselineY = null;
-        return { stage: currentStage, isRep: false, feedback: 'Step Back (Show Feet)', angle: 0 };
+    // 1. Visibility Check
+    const minVisibility = 0.5;
+    if (
+        leftShoulder.visibility < minVisibility || rightShoulder.visibility < minVisibility ||
+        leftHip.visibility < minVisibility || rightHip.visibility < minVisibility ||
+        (leftAnkle.visibility < minVisibility && rightAnkle.visibility < minVisibility)
+    ) {
+        return {
+            newState: { ...currentState, baselineRatio: null }, // Reset baseline if tracking lost
+            isRep: false,
+            feedback: 'Show Full Body'
+        };
     }
 
-    // Ensure nose is also visible
-    if (nose.visibility < 0.5) {
-        return { stage: currentStage, isRep: false, feedback: 'Show Face', angle: 0 };
+    // 2. Calculate Metrics
+    // Average Y positions (0 is top, 1 is bottom)
+    const shoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+    const hipY = (leftHip.y + rightHip.y) / 2;
+    const ankleY = (leftAnkle.y + rightAnkle.y) / 2;
+
+    // Vertical segments
+    const torsoLength = Math.abs(hipY - shoulderY);
+    const legLength = Math.abs(ankleY - hipY);
+
+    // Prevent division by zero or tiny torso
+    if (torsoLength < 0.05) {
+        return { newState: currentState, isRep: false, feedback: 'Adjust Camera' };
     }
 
-    // 2. Establish Baseline (Standing Position)
-    // Update baseline if we find a higher head position (smaller Y) WHILE ankles are visible.
-    if (baselineY === null || nose.y < baselineY) {
-        baselineY = nose.y;
-    }
+    // Ratio: Leg Length / Torso Length
+    // Standing: Legs extended (max length). Ratio is high.
+    // Squat: Legs folded (shorter vertical projection). Ratio is low.
+    const currentRatio = legLength / torsoLength;
 
-    // 3. Squat Detection Logic
-    const threshold = 0.15; // Normalized coordinates drop
-
-    let stage = currentStage;
+    // 3. Update State
+    let { stage, baselineRatio } = currentState;
     let isRep = false;
     let feedback = '';
 
-    // Calculate "depth" as distance from baseline
-    const depth = nose.y - baselineY;
+    // Initialize baseline if needed (assume standing at start)
+    // We update baseline if we see a "taller" ratio (more standing)
+    if (baselineRatio === null || currentRatio > baselineRatio) {
+        baselineRatio = currentRatio;
+    }
 
-    // Hysteresis for state change
-    if (depth > threshold) { // Dropped down
-        if (stage === 'UP') {
+    // Thresholds (relative to baseline)
+    // Squat depth: Ratio drops significantly.
+    // E.g., if standing ratio is 1.5, squat might be 1.0.
+    // Let's say drop of 30% is a good squat.
+    const SQUAT_THRESHOLD_RATIO = 0.75; // 75% of baseline
+    const STANDING_THRESHOLD_RATIO = 0.90; // 90% of baseline to return
+
+    const ratioToBaseline = currentRatio / baselineRatio;
+
+    if (stage === 'UP') {
+        if (ratioToBaseline < SQUAT_THRESHOLD_RATIO) {
             stage = 'DOWN';
             feedback = 'Good Depth!';
+        } else {
+            feedback = 'Ready';
         }
-    } else if (depth < threshold * 0.5) { // Returned up
-        if (stage === 'DOWN') {
+    } else if (stage === 'DOWN') {
+        if (ratioToBaseline > STANDING_THRESHOLD_RATIO) {
             stage = 'UP';
             isRep = true;
             feedback = 'Rep Completed';
         } else {
-            stage = 'UP';
-            // Optional: Check if standing straight?
-            // For now, just being close to baseline is enough.
-            feedback = 'Ready';
-        }
-    } else {
-        // In between states
-        if (stage === 'DOWN') {
             feedback = 'Hold...';
-        } else {
-            feedback = 'Go Lower';
         }
     }
 
-    // Return a dummy angle for UI compatibility if needed, or we can repurpose it to show depth %
-    const displayValue = Math.round(depth * 100);
-
-    return { stage, isRep, feedback, angle: displayValue };
+    return {
+        newState: { stage, baselineRatio },
+        isRep,
+        feedback
+    };
 };

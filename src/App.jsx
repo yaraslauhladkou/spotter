@@ -4,17 +4,19 @@ import { checkSquat } from './utils/squatLogic';
 
 function App() {
   const [count, setCount] = useState(0);
-  const [stage, setStage] = useState('UP');
   const [feedback, setFeedback] = useState('Get Ready');
 
+  // Complex state for the logic (stage, timestamps, baselines)
+  const [logicState, setLogicState] = useState({
+    stage: 'UP',
+    baselineRatio: null
+  });
 
   const handlePoseResults = useCallback((results) => {
     if (results.poseLandmarks) {
-      const { stage: newStage, isRep, feedback: newFeedback, angle: currentAngle } = checkSquat(results.poseLandmarks, stage);
+      const { newState, isRep, feedback: newFeedback } = checkSquat(results.poseLandmarks, logicState);
 
-      if (newStage !== stage) {
-        setStage(newStage);
-      }
+      setLogicState(newState);
 
       if (isRep) {
         setCount(c => c + 1);
@@ -23,10 +25,8 @@ function App() {
       if (newFeedback) {
         setFeedback(newFeedback);
       }
-
-
     }
-  }, [stage]);
+  }, [logicState]);
 
   return (
     <div className="full-screen flex-center">
@@ -49,8 +49,8 @@ function App() {
 
           <div className="glass-panel" style={{ padding: '15px 30px', flex: 1 }}>
             <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>STATUS</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: '600', color: stage === 'DOWN' ? 'var(--secondary-accent)' : 'white' }}>
-              {stage}
+            <div style={{ fontSize: '1.5rem', fontWeight: '600', color: logicState.stage === 'DOWN' ? 'var(--secondary-accent)' : 'white' }}>
+              {logicState.stage}
             </div>
           </div>
         </div>
