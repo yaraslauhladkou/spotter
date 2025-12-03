@@ -67,6 +67,29 @@ function App() {
           </div>
         </div>
 
+        {/* Reset Button */}
+        <button
+          onClick={() => setCount(0)}
+          className="glass-panel"
+          style={{
+            marginBottom: '20px',
+            padding: '10px 30px',
+            fontSize: '1rem',
+            fontWeight: '600',
+            color: 'white',
+            background: 'rgba(255, 255, 255, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '30px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            outline: 'none'
+          }}
+          onMouseOver={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.2)'}
+          onMouseOut={(e) => e.target.style.background = 'rgba(255, 255, 255, 0.1)'}
+        >
+          RESET COUNTER
+        </button>
+
         {/* Main Video Area */}
         <div style={{
           position: 'relative',
