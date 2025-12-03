@@ -61,7 +61,7 @@ const WebcamCanvas = ({ onPoseResults }) => {
             position: 'relative',
             width: '100%',
             maxWidth: '640px',
-            aspectRatio: '4/3', // Maintain aspect ratio
+            aspectRatio: '9/16', // Maintain aspect ratio
             margin: '0 auto',
             overflow: 'hidden'
         }}>

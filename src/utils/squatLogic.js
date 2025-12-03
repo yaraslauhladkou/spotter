@@ -1,92 +1,61 @@
 /**
- * Calculates the angle between three points (A, B, C) at point B.
- * @param {object} a - Point A {x, y}
- * @param {object} b - Point B {x, y}
- * @param {object} c - Point C {x, y}
- * @returns {number} Angle in degrees
- */
-export const calculateAngle = (a, b, c) => {
-    const radians = Math.atan2(c.y - b.y, c.x - b.x) - Math.atan2(a.y - b.y, a.x - b.x);
-    let angle = Math.abs(radians * 180.0 / Math.PI);
-
-    if (angle > 180.0) {
-        angle = 360 - angle;
-    }
-
-    return angle;
-};
-
-/**
- * Checks the squat state based on landmarks.
+ * Checks the squat state based on head position.
  * @param {Array} landmarks - Array of pose landmarks
  * @param {string} currentStage - Current stage ('UP' or 'DOWN')
- * @returns {object} { stage, isRep, feedback }
+ * @returns {object} { stage, isRep, feedback, angle }
  */
+
+let baselineY = null; // Store the standing height (min Y)
+
 export const checkSquat = (landmarks, currentStage) => {
     // MediaPipe Pose Landmarks:
-    // 23: left_hip, 24: right_hip
-    // 25: left_knee, 26: right_knee
-    // 27: left_ankle, 28: right_ankle
+    // 0: nose
+    const nose = landmarks[0];
 
-    const leftHip = landmarks[23];
-    const leftKnee = landmarks[25];
-    const leftAnkle = landmarks[27];
-
-    const rightHip = landmarks[24];
-    const rightKnee = landmarks[26];
-    const rightAnkle = landmarks[28];
-
-    // Ensure visibility is good enough
-    if (leftHip.visibility < 0.5 || leftKnee.visibility < 0.5 || leftAnkle.visibility < 0.5) {
-        return { stage: currentStage, isRep: false, feedback: 'Adjust Camera' };
+    // Ensure visibility
+    if (nose.visibility < 0.5) {
+        return { stage: currentStage, isRep: false, feedback: 'Show Face', angle: 0 };
     }
 
-    // Calculate angles for both legs (or just one, usually left is fine if side view, but average is safer for front view)
-    // For front view, depth is harder to judge by angle alone, but we can try.
-    // Actually, for a standard squat tracker, side view is best. 
-    // But let's assume the user might be front-facing. 
-    // Vertical displacement of hip relative to knee is another metric.
+    // Update baseline (standing position)
+    // We assume the user starts standing or stands up taller.
+    // Smaller Y means higher up in the image (0 is top).
+    if (baselineY === null || nose.y < baselineY) {
+        baselineY = nose.y;
+    }
 
-    // Let's stick to angles. 
-    const leftAngle = calculateAngle(leftHip, leftKnee, leftAnkle);
-    const rightAngle = calculateAngle(rightHip, rightKnee, rightAnkle);
+    // If the user moves significantly lower than baseline, reset slightly to adapt to drift?
+    // For now, let's just keep the min Y. 
+    // Actually, if they move the camera or step back, baseline might need reset.
+    // But for simple logic:
 
-    // Use the average or the most visible leg
-    const angle = leftAngle; // Simplified for now
+    const threshold = 0.15; // Normalized coordinates. 0.15 is a decent drop.
 
     let stage = currentStage;
     let isRep = false;
     let feedback = '';
 
-    // Thresholds
-    const STANDING_THRESHOLD = 160;
-    const SQUAT_THRESHOLD = 90; // Parallel or below
+    // Calculate "depth" as distance from baseline
+    const depth = nose.y - baselineY;
 
-    if (angle > STANDING_THRESHOLD) {
-        stage = 'UP';
+    if (depth > threshold) { // Dropped down
+        if (stage === 'UP') {
+            stage = 'DOWN';
+            feedback = 'Good Depth!';
+        }
+    } else if (depth < threshold * 0.5) { // Returned up (hysteresis)
+        if (stage === 'DOWN') {
+            stage = 'UP';
+            isRep = true;
+            feedback = 'Rep Completed';
+        } else {
+            stage = 'UP';
+            feedback = 'Go Lower';
+        }
     }
 
-    if (angle < SQUAT_THRESHOLD && currentStage === 'UP') {
-        stage = 'DOWN';
-        feedback = 'Good Depth!';
-    }
+    // Return a dummy angle for UI compatibility if needed, or we can repurpose it to show depth %
+    const displayValue = Math.round(depth * 100);
 
-    // Count rep when returning to UP from DOWN
-    // Wait, usually we count when they complete the rep (return to standing)
-    // So:
-    // 1. Start UP
-    // 2. Go DOWN (set stage = DOWN)
-    // 3. Go UP (if stage was DOWN, count++)
-
-    if (angle > STANDING_THRESHOLD && currentStage === 'DOWN') {
-        stage = 'UP';
-        isRep = true;
-        feedback = 'Rep Completed';
-    } else if (currentStage === 'DOWN' && angle < SQUAT_THRESHOLD) {
-        feedback = 'Hold...';
-    } else if (currentStage === 'UP' && angle < STANDING_THRESHOLD && angle > SQUAT_THRESHOLD) {
-        feedback = 'Go Lower';
-    }
-
-    return { stage, isRep, feedback, angle };
+    return { stage, isRep, feedback, angle: displayValue };
 };
