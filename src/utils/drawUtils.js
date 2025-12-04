@@ -1,16 +1,16 @@
 import { POSE_CONNECTIONS } from '@mediapipe/pose';
 
-export const drawCanvas = (ctx, results) => {
+export const drawCanvas = (ctx, results, lineY = 0.5) => {
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
 
     ctx.save();
     ctx.clearRect(0, 0, width, height);
 
-    // Draw horizontal line at 50% height
+    // Draw horizontal line at lineY height
     ctx.beginPath();
-    ctx.moveTo(0, height * 0.5);
-    ctx.lineTo(width, height * 0.5);
+    ctx.moveTo(0, height * lineY);
+    ctx.lineTo(width, height * lineY);
     ctx.lineWidth = 4;
     ctx.strokeStyle = '#ffff00'; // Yellow
     ctx.setLineDash([10, 10]); // Dashed line

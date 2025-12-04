@@ -5,6 +5,7 @@ import { checkSquat } from './utils/squatLogic';
 function App() {
   const [count, setCount] = useState(0);
   const [feedback, setFeedback] = useState('Get Ready');
+  const [lineY, setLineY] = useState(0.5);
 
   // Use Ref for instant state updates (avoids race conditions)
   const logicStateRef = useRef({
@@ -20,7 +21,7 @@ function App() {
     if (results.poseLandmarks) {
       // Read from Ref (instant)
       const currentState = logicStateRef.current;
-      const { newState, isRep, feedback: newFeedback } = checkSquat(results.poseLandmarks, currentState);
+      const { newState, isRep, feedback: newFeedback } = checkSquat(results.poseLandmarks, currentState, lineY);
 
       // Write to Ref (instant)
       logicStateRef.current = newState;
@@ -97,7 +98,11 @@ function App() {
           maxWidth: '640px',
           margin: '0 auto'
         }}>
-          <WebcamCanvas onPoseResults={handlePoseResults} />
+          <WebcamCanvas
+            onPoseResults={handlePoseResults}
+            lineY={lineY}
+            onLineMove={setLineY}
+          />
 
           {/* Overlay Feedback */}
           <div style={{

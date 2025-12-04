@@ -4,16 +4,59 @@ import { Pose } from '@mediapipe/pose';
 import * as cam from '@mediapipe/camera_utils';
 import { drawCanvas } from '../utils/drawUtils';
 
-const WebcamCanvas = ({ onPoseResults }) => {
+const WebcamCanvas = ({ onPoseResults, lineY = 0.5, onLineMove }) => {
     const webcamRef = useRef(null);
     const canvasRef = useRef(null);
     const [cameraActive, setCameraActive] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
 
     const onPoseResultsRef = useRef(onPoseResults);
+    const lineYRef = useRef(lineY);
 
     useEffect(() => {
         onPoseResultsRef.current = onPoseResults;
     }, [onPoseResults]);
+
+    useEffect(() => {
+        lineYRef.current = lineY;
+    }, [lineY]);
+
+    // Handle Dragging
+    const handleStart = (clientY) => {
+        if (!canvasRef.current) return;
+        const rect = canvasRef.current.getBoundingClientRect();
+        const y = (clientY - rect.top) / rect.height;
+
+        // Check if click is near the line (within 5%)
+        if (Math.abs(y - lineY) < 0.05) {
+            setIsDragging(true);
+        }
+    };
+
+    const handleMove = (clientY) => {
+        if (isDragging && canvasRef.current && onLineMove) {
+            const rect = canvasRef.current.getBoundingClientRect();
+            let y = (clientY - rect.top) / rect.height;
+            // Clamp between 0.1 and 0.9
+            y = Math.max(0.1, Math.min(0.9, y));
+            onLineMove(y);
+        }
+    };
+
+    const handleEnd = () => {
+        setIsDragging(false);
+    };
+
+    // Mouse Events
+    const onMouseDown = (e) => handleStart(e.clientY);
+    const onMouseMove = (e) => handleMove(e.clientY);
+    const onMouseUp = () => handleEnd();
+    const onMouseLeave = () => handleEnd();
+
+    // Touch Events
+    const onTouchStart = (e) => handleStart(e.touches[0].clientY);
+    const onTouchMove = (e) => handleMove(e.touches[0].clientY);
+    const onTouchEnd = () => handleEnd();
 
     useEffect(() => {
         const pose = new Pose({
@@ -41,7 +84,7 @@ const WebcamCanvas = ({ onPoseResults }) => {
                 canvasRef.current.height = videoHeight;
 
                 const ctx = canvasRef.current.getContext('2d');
-                drawCanvas(ctx, results);
+                drawCanvas(ctx, results, lineYRef.current);
 
                 if (onPoseResultsRef.current) {
                     onPoseResultsRef.current(results);
@@ -70,8 +113,18 @@ const WebcamCanvas = ({ onPoseResults }) => {
             maxWidth: '640px',
             aspectRatio: '9/16', // Maintain aspect ratio
             margin: '0 auto',
-            overflow: 'hidden'
-        }}>
+            overflow: 'hidden',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            touchAction: 'none'
+        }}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+            onMouseLeave={onMouseLeave}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+        >
             <Webcam
                 ref={webcamRef}
                 style={{
