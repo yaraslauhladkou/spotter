@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import WebcamCanvas from './components/WebcamCanvas';
 import { checkSquat } from './utils/squatLogic';
 
@@ -12,6 +12,13 @@ function App() {
     stage: 'UP'
   });
 
+  // Ref for lineY to avoid stale closures in callback
+  const lineYRef = useRef(lineY);
+  // Update ref when state changes
+  if (lineYRef.current !== lineY) {
+    lineYRef.current = lineY;
+  }
+
   // Sync Ref to State for UI updates
   const [uiState, setUiState] = useState({
     stage: 'UP'
@@ -21,7 +28,7 @@ function App() {
     if (results.poseLandmarks) {
       // Read from Ref (instant)
       const currentState = logicStateRef.current;
-      const { newState, isRep, feedback: newFeedback } = checkSquat(results.poseLandmarks, currentState, lineY);
+      const { newState, isRep, feedback: newFeedback } = checkSquat(results.poseLandmarks, currentState, lineYRef.current);
 
       // Write to Ref (instant)
       logicStateRef.current = newState;
